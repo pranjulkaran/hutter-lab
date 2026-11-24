@@ -18,8 +18,6 @@ enwik*
 *.v9
 
 # Compiled C++ binaries & UPX-packed executables
-mini_cmix
-mini_cmix_v*
 *_packed
 *.o
 *.out
