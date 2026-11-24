@@ -1,0 +1,33 @@
+# Wikipedia benchmark datasets & slices
+enwik*
+
+# Restored verification outputs & intermediate archives
+*.restored
+*.gz
+*.xz
+*.bz2
+*.zst
+*.v1
+*.v2
+*.v3
+*.v4
+*.v5
+*.v6
+*.v7
+*.v8
+*.v9
+
+# Compiled C++ binaries & UPX-packed executables
+mini_cmix
+mini_cmix_v*
+*_packed
+*.o
+*.out
+
+# Python virtual environments & cache
+.venv/
+venv/
+__pycache__/
+*.pyc
+wiki_prep
+*.exe

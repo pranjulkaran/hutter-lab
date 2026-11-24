@@ -1,0 +1,79 @@
+# 1. Strip & UPX-pack both v4 and v5 binaries (exact Hutter Prize packaging)
+for v in mini_cmix_v4 mini_cmix_v5; do
+    cp "$v" "${v}_packed"
+    strip --strip-all "${v}_packed"
+    upx-ucl --best "${v}_packed"
+done
+
+# 2. Run Linux baselines (gzip -9 and xz -9)
+echo "=== Running gzip -9 & xz -9 on 100 MB enwik8 ==="
+gzip -9 -c enwik8 > enwik8.gz
+xz -9 -c enwik8 > enwik8.xz
+
+# 3. Run mini_cmix_v4 (compress + decompress + SHA-256 check)
+echo "=== Running mini_cmix_v4 on 100 MB enwik8 ==="
+taskset -c 0 /usr/bin/time -v ./mini_cmix_v4_packed c enwik8 enwik8.v4
+taskset -c 0 /usr/bin/time -v ./mini_cmix_v4_packed d enwik8.v4 enwik8.v4.restored
+
+# 4. Run mini_cmix_v5 (compress + decompress + SHA-256 check)
+echo "=== Running mini_cmix_v5 on 100 MB enwik8 ==="
+taskset -c 0 /usr/bin/time -v ./mini_cmix_v5_packed c enwik8 enwik8.v5
+taskset -c 0 /usr/bin/time -v ./mini_cmix_v5_packed d enwik8.v5 enwik8.v5.restored
+
+# 5. Verify 100% lossless SHA-256 match
+sha256sum enwik8 enwik8.v4.restored enwik8.v5.restored
+
+# 6. Print Full Comparison Table (Your v4 & v5 vs Baselines & Official Records)
+python3 - << 'EOF'
+import os
+
+orig = os.path.getsize("enwik8")
+gz   = os.path.getsize("enwik8.gz")
+xz   = os.path.getsize("enwik8.xz")
+
+v4_arc = os.path.getsize("enwik8.v4")
+v4_bin = os.path.getsize("mini_cmix_v4_packed")
+v4_tot = v4_arc + v4_bin
+
+v5_arc = os.path.getsize("enwik8.v5")
+v5_bin = os.path.getsize("mini_cmix_v5_packed")
+v5_tot = v5_arc + v5_bin
+
+rows = [
+    ("Original enwik8",                 orig,       "Uncompressed"),
+    ("gzip -9",                         gz,         "Standard DEFLATE"),
+    ("xz -9 (LZMA2)",                   xz,         "Best standard Linux archiver"),
+    ("YOUR mini_cmix_v4 (arc + bin)",   v4_tot,     f"arc={v4_arc:,} + bin={v4_bin:,}"),
+    ("YOUR mini_cmix_v5 (arc + bin)",   v5_tot,     f"arc={v5_arc:,} + bin={v5_bin:,}"),
+    ("paq8f (2006 Hutter Baseline)",    18_324_887, "Official pre-prize baseline"),
+    ("phda9 (2017 enwik8 Record)",      15_284_944, "Official enwik8 world record"),
+    ("cmix v21 (LTCB enwik8 SOTA)",     14_623_723, "All-time enwik8 SOTA"),
+]
+
+print("\n" + "="*84)
+print(f"{'Compressor':<32} | {'Total Bytes':>13} | {'Bits/Byte':>9} | {'Notes'}")
+print("-"*84)
+for name, sz, note in rows:
+    bpb = (sz * 8.0) / orig
+    print(f"{name:<32} | {sz:>13,} | {bpb:>9.4f} | {note}")
+print("="*84)
+EOF
+
+
+
+----------------------------------------------------------------------------
+
+
+
+cd ~/Projects/hutter-lab
+
+# Create exact 10 MB enwik7 slice & baselines
+head -c 10000000 enwik8 > enwik7
+gzip -9 -c enwik7 > enwik7.gz
+xz -9 -c enwik7 > enwik7.xz
+
+# Benchmark current v5 on enwik7 (takes ~95 seconds)
+time ./mini_cmix_v5 c enwik7 enwik7.v5
+time ./mini_cmix_v5 d enwik7.v5 enwik7.v5.restored
+sha256sum enwik7 enwik7.v5.restored
+
